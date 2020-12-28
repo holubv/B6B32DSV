@@ -1,9 +1,9 @@
 {
-  "name": "B6B32DSV",
+  "name": "b6b32dsv_holubv",
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js localhost:8100"
   },
   "dependencies": {
     "http": "*"
