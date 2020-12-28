@@ -1,0 +1,11 @@
+{
+  "name": "B6B32DSV",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "http": "*"
+  }
+}
