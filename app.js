@@ -1,4 +1,4 @@
-let http = require('http');
+
 let Address = require('./src/address');
 
 let args = process.argv.slice(2);

@@ -1,5 +1,8 @@
 module.exports = class Address {
 
+    /**
+     * @param {string} str Address in "ip:port" format
+     */
     constructor(str) {
         let split = str.split(':');
 
@@ -7,7 +10,13 @@ module.exports = class Address {
             throw new Error('Invalid address format');
         }
 
+        /**
+         * @type {string}
+         */
         this.ip = split[0];
+        /**
+         * @type {number}
+         */
         this.port = Number(split[1]);
 
         if (!this.ip || !this.port) {
@@ -15,8 +24,18 @@ module.exports = class Address {
         }
     }
 
+    /**
+     * @returns {string}
+     */
     get address() {
         return this.ip + ':' + this.port;
+    }
+
+    /**
+     * @returns {string}
+     */
+    get http() {
+        return 'http://' + this.ip + ':' + this.port + '/';
     }
 
 
