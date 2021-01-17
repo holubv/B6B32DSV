@@ -44,6 +44,14 @@ module.exports = class Node {
          * @type {boolean}
          */
         this.voting = false;
+
+        this.repairing = false;
+
+        // setInterval(() => {
+        //     if (this.isLeader) {
+        //         this.send({type: 'test'});
+        //     }
+        // }, 5000);
     }
 
 
@@ -52,11 +60,21 @@ module.exports = class Node {
         this.send(Message.connect());
     }
 
+    disconnect() {
+        this.send(Message.exit())
+            .then(() => {
+                setTimeout(() => process.exit(0), 500);
+            });
+    }
+
     /**
      * @param {object} message
      * @return {Promise}
      */
     send(message) {
+        if (!this.right) {
+            return Promise.resolve();
+        }
         return this.sendRaw({
             ...this._messageHeader(),
             ...message
@@ -68,19 +86,24 @@ module.exports = class Node {
      * @return {Promise}
      */
     sendRaw(message) {
+        let right = this.right;
         return this._makeHttpRequest(message)
-            .catch(() => {
-                console.error('Cannot send data to ' + this.right.address);
-                console.log('Attempting to repair the ring');
+            .catch((e) => {
+                console.error('Cannot send data to ' + right.address);
+                //console.error(e);
+                this._scheduleResend(message);
 
-                this.send(Message.repair());
+                if (this.repairing) {
+                    return;
+                }
+
+                console.log('Attempting to repair the ring');
+                this.repairing = true;
 
                 this._makeHttpRequest({
                     ...this._messageHeader(),
                     ...Message.repair()
-                }, this.left.http);
-
-                this._scheduleResend(message);
+                }, this.left);
             });
     }
 
@@ -91,27 +114,29 @@ module.exports = class Node {
             return;
         }
 
-        console.info('Resending data type ' + message.type + ' (' + retries + ')');
-
         setTimeout(() => {
+            console.info('Resending data type ' + message.type + ' (' + retries + ')');
             this._makeHttpRequest(message)
                 .catch(() => {
                     this._scheduleResend(message, retries + 1);
                 });
-        }, 200);
+        }, 1000);
 
     }
 
     /**
-     * @param url
      * @param {object} data
+     * @param {module.Address} [address]
      * @return {Promise}
      */
-    _makeHttpRequest(data, url) {
-        if (!url) {
-            url = this.right.http;
+    _makeHttpRequest(data, address) {
+        if (!address) {
+            address = this.right;
         }
-        return fetch(url, {
+        if (!address || address.address === this.ip.address) {
+            return Promise.resolve();
+        }
+        return fetch(address.http, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
@@ -154,8 +179,14 @@ module.exports = class Node {
     Incoming message handlers
      */
 
-    __in_test(msg) {
-        console.log('test data received');
+    __in_ping(msg) {
+        if (this.isFromSelf(msg)) {
+            console.log('Pong (visited: ' + msg.visited + ')');
+            return;
+        }
+        msg.visited = (msg.visited || 0) + 1;
+        console.log('Ping');
+        this.sendRaw(msg);
     }
 
     __in_connect(msg) {
@@ -239,16 +270,29 @@ module.exports = class Node {
             this._makeHttpRequest({
                 ...this._messageHeader(),
                 ...Message.repaired()
-            }, this.left.http);
+            }, this.left);
             return;
         }
 
-        this._makeHttpRequest(msg, this.left.http);
+        this._makeHttpRequest(msg, this.left);
     }
 
     __in_repaired(msg) {
         console.log('Ring was repaired successfully');
+        this.repairing = false;
         this.right = new Address(msg.src);
         this.startElection();
+    }
+
+    __in_exit(msg) {
+        console.log('Node @' + msg.src + ' disconnected');
+
+        if (msg.src === this.right.address) {
+            this.right = new Address(msg.dst);
+            this.send(Message.setLeft());
+            return;
+        }
+
+        this.sendRaw(msg);
     }
 }

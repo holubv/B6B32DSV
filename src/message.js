@@ -43,6 +43,17 @@ module.exports = class Message {
         }
     }
 
+    static exit() {
+        return {
+            type: 'exit'
+        }
+    }
 
+    static ping() {
+        return {
+            type: 'ping',
+            visited: 0
+        }
+    }
 
 }
