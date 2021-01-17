@@ -6,18 +6,24 @@ let Address = require('./src/address');
 let Message = require('./src/message');
 
 
-const consoleLog = console.log;
-console.log = function (...args) {
-    consoleLog(new Date().toISOString(), ...args);
-}
-
-
 let args = process.argv.slice(2);
 let currentAddress = new Address(args[0]);
 
-
 let node = new Node(currentAddress);
 let server = new Server(node);
+
+{
+    const logger = require('simple-node-logger').createSimpleLogger('node_' + node.id + '.log');
+
+    console.log = function (...args) {
+        //consoleLog(new Date().toISOString(), ...args);
+        logger.info(...args);
+    }
+
+    console.error = function (...args) {
+        logger.error(...args);
+    }
+}
 
 console.log('Running instance @' + currentAddress.address);
 console.log('Current node id: ' + node.id);
