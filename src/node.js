@@ -53,7 +53,7 @@ module.exports = class Node {
         /**
          * @type {string|null}
          */
-        this.data = null;
+        this.data = '';
     }
 
 
@@ -126,7 +126,7 @@ module.exports = class Node {
         }
 
         setTimeout(() => {
-            console.info('Resending data type ' + message.type + ' (' + retries + ')');
+            console.log('Resending data type ' + message.type + ' (' + retries + ')');
             this._makeHttpRequest(message)
                 .catch(() => {
                     this._scheduleResend(message, retries + 1);
@@ -237,15 +237,18 @@ module.exports = class Node {
     }
 
     __in_election(msg) {
+        console.log('Ongoing election');
         let srcId = this._generateId(msg.src);
 
         if (srcId > this.id) {
+            console.log('    (this node is not a suitable candidate)');
             this.voting = true;
             this.sendRaw(msg);
             return;
         }
 
         if (srcId < this.id && !this.voting) {
+            console.log('    (this node could be a leader)');
             this.voting = true;
             this.send(Message.election());
             return;
@@ -268,7 +271,7 @@ module.exports = class Node {
 
         if (this.isFromSelf(msg)) {
             this.isLeader = true;
-            console.log('   (this node is the leader now)');
+            console.log('    (this node is the leader now)');
             return;
         }
 
@@ -340,6 +343,7 @@ module.exports = class Node {
     }
 
     __in_data_change(msg) {
+        console.log('Variable updated: "' + msg.data + '"');
         if (this.isFromSelf(msg)) {
             return;
         }

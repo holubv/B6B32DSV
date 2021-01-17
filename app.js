@@ -51,22 +51,25 @@ cmd.on('line', (line) => {
     }
 
     if (args[0] === 'get') {
-        console.log(node.data);
+        console.log('Local value: "' + node.data + '"');
     }
 
     if (args[0] === 'fetch') {
         if (node.isLeader) {
-
+            console.log('This node is the leader, no need to fetch');
         } else {
+            console.log('Requesting variable update');
             node.send(Message.getData());
         }
     }
 
     if (args[0] === 'exit') {
+        console.log('Disconnecting node');
         node.disconnect();
     }
 
     if (args[0] === 'set' && args[1]) {
+        console.log('Sending variable change request');
         args.shift();
         node.setData(args.join(' '));
     }

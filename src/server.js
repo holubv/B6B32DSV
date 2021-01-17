@@ -43,7 +43,7 @@ module.exports = class Server {
     }
 
     handle(json) {
-        console.log(json);
+        //console.log(json);
 
         if (!json || !json.type) {
             console.error('Invalid message type received');
