@@ -50,7 +50,24 @@ cmd.on('line', (line) => {
         console.log({...node});
     }
 
+    if (args[0] === 'get') {
+        console.log(node.data);
+    }
+
+    if (args[0] === 'fetch') {
+        if (node.isLeader) {
+
+        } else {
+            node.send(Message.getData());
+        }
+    }
+
     if (args[0] === 'exit') {
         node.disconnect();
+    }
+
+    if (args[0] === 'set' && args[1]) {
+        args.shift();
+        node.setData(args.join(' '));
     }
 });

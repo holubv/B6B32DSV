@@ -45,13 +45,15 @@ module.exports = class Node {
          */
         this.voting = false;
 
+        /**
+         * @type {boolean}
+         */
         this.repairing = false;
 
-        // setInterval(() => {
-        //     if (this.isLeader) {
-        //         this.send({type: 'test'});
-        //     }
-        // }, 5000);
+        /**
+         * @type {string|null}
+         */
+        this.data = null;
     }
 
 
@@ -105,6 +107,15 @@ module.exports = class Node {
                     ...Message.repair()
                 }, this.left);
             });
+    }
+
+    setData(data) {
+        if (this.isLeader) {
+            this.data = data;
+            this.send(Message.dataChange(data));
+            return;
+        }
+        this.send(Message.setData(data));
     }
 
     _scheduleResend(message, retries = 0) {
@@ -248,6 +259,11 @@ module.exports = class Node {
     __in_elected(msg) {
         this.voting = false;
         this.leader = new Address(msg.src);
+
+        if (this.isLeader) {
+            this.send(Message.dataChange(this.data));
+        }
+
         console.log('Leader was elected: ' + this.leader.address);
 
         if (this.isFromSelf(msg)) {
@@ -293,6 +309,42 @@ module.exports = class Node {
             return;
         }
 
+        this.sendRaw(msg);
+    }
+
+    __in_set_data(msg) {
+        if (this.isFromSelf(msg)) {
+            return;
+        }
+
+        if (!this.isLeader) {
+            this.sendRaw(msg);
+            return;
+        }
+
+        this.data = msg.data || '';
+        this.send(Message.dataChange(this.data));
+    }
+
+    __in_get_data(msg) {
+        if (this.isFromSelf(msg)) {
+            return;
+        }
+
+        if (!this.isLeader) {
+            this.sendRaw(msg);
+            return;
+        }
+
+        this.send(Message.dataChange(this.data));
+    }
+
+    __in_data_change(msg) {
+        if (this.isFromSelf(msg)) {
+            return;
+        }
+
+        this.data = msg.data || '';
         this.sendRaw(msg);
     }
 }

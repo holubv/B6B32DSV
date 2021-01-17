@@ -56,4 +56,24 @@ module.exports = class Message {
         }
     }
 
+    static getData() {
+        return {
+            type: 'get_data'
+        }
+    }
+
+    static setData(data) {
+        return {
+            type: 'set_data',
+            data: data
+        }
+    }
+
+    static dataChange(data) {
+        return {
+            type: 'data_change',
+            data: data
+        }
+    }
+
 }
