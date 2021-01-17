@@ -2,6 +2,8 @@ const fetch = require('node-fetch');
 const Message = require('./message');
 const Address = require('./address');
 
+const MAX_SEND_RETRIES = 10;
+
 module.exports = class Node {
 
     /**
@@ -56,8 +58,7 @@ module.exports = class Node {
      */
     send(message) {
         return this.sendRaw({
-            src: this.ip.address,
-            dst: this.right.address,
+            ...this._messageHeader(),
             ...message
         });
     }
@@ -67,17 +68,65 @@ module.exports = class Node {
      * @return {Promise}
      */
     sendRaw(message) {
-        return fetch(this.right.http, {
+        return this._makeHttpRequest(message)
+            .catch(() => {
+                console.error('Cannot send data to ' + this.right.address);
+                console.log('Attempting to repair the ring');
+
+                this.send(Message.repair());
+
+                this._makeHttpRequest({
+                    ...this._messageHeader(),
+                    ...Message.repair()
+                }, this.left.http);
+
+                this._scheduleResend(message);
+            });
+    }
+
+    _scheduleResend(message, retries = 0) {
+        if (retries >= MAX_SEND_RETRIES) {
+            console.error('Repair process was unsuccessful, application will be terminated');
+            process.exit(1);
+            return;
+        }
+
+        console.info('Resending data type ' + message.type + ' (' + retries + ')');
+
+        setTimeout(() => {
+            this._makeHttpRequest(message)
+                .catch(() => {
+                    this._scheduleResend(message, retries + 1);
+                });
+        }, 200);
+
+    }
+
+    /**
+     * @param url
+     * @param {object} data
+     * @return {Promise}
+     */
+    _makeHttpRequest(data, url) {
+        if (!url) {
+            url = this.right.http;
+        }
+        return fetch(url, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
                 method: 'POST',
-                body: JSON.stringify(message)
+                body: JSON.stringify(data)
             }
-        ).catch(() => {
+        );
+    }
 
-        });
+    _messageHeader() {
+        return {
+            src: this.ip.address,
+            dst: this.right.address
+        }
     }
 
     startElection() {
@@ -178,5 +227,28 @@ module.exports = class Node {
 
         this.isLeader = false;
         this.sendRaw(msg);
+    }
+
+    __in_repair(msg) {
+        if (msg.src === this.ip.address) {
+            return;
+        }
+
+        if (msg.dst === this.left.address) {
+            this.left = new Address(msg.src);
+            this._makeHttpRequest({
+                ...this._messageHeader(),
+                ...Message.repaired()
+            }, this.left.http);
+            return;
+        }
+
+        this._makeHttpRequest(msg, this.left.http);
+    }
+
+    __in_repaired(msg) {
+        console.log('Ring was repaired successfully');
+        this.right = new Address(msg.src);
+        this.startElection();
     }
 }
