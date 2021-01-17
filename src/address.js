@@ -14,6 +14,11 @@ module.exports = class Address {
          * @type {string}
          */
         this.ip = split[0];
+
+        if (this.ip === 'localhost') {
+            this.ip = '127.0.0.1';
+        }
+
         /**
          * @type {number}
          */
